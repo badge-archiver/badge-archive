@@ -47,34 +47,13 @@ badges/
 
 Фото кладите в `assets/img/<год>/`, модели — в `assets/models/<год>/`.
 
-## 3D-модели
+<!-- ## 3D-модели -->
 
-Когда отсканируете предмет, экспортируйте в **glTF binary (`.glb`)**,
+<!-- Когда отсканируете предмет, экспортируйте в **glTF binary (`.glb`)**,
 положите в `assets/models/` и укажите путь в `model3d`. Просмотрщик
 (`<model-viewer>` от Google, подключён по CDN) появится на сайте автоматически:
-модель можно вращать мышью/пальцем.
+модель можно вращать мышью/пальцем. -->
 
-## Публикация на GitHub Pages
-
-1. Создайте репозиторий на GitHub и запушьте содержимое папки в корень:
-
-   ```bash
-   git init
-   git add .
-   git commit -m "badge archive"
-   git remote add origin git@github.com:<user>/<repo>.git
-   git push -u origin main
-   ```
-
-2. В репозитории: **Settings → Pages → Build and deployment →
-   Source: Deploy from a branch → Branch: `main`, folder: `/ (root)` → Save**.
-
-3. Через минуту сайт будет доступен по адресу
-   `https://<user>.github.io/<repo>/`.
-
-Никаких настроек сборки не нужно — Pages отдаёт статику как есть.
-Если сайт лежит не в корне репозитория, а в подпапке `badges/`, выберите её
-в настройках Pages (folder: `/badges` из ветки `main`).
 
 ## Локальный просмотр
 
