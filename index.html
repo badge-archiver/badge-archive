@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OFFZONE Badge Archive — коллекция бейджей и аддонов</title>
+  <meta name="description" content="Архив бейджей и аддонов с конференций OFFZONE: фото, описания, раритетность, 3D-модели.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <!-- 3D-просмотрщик (.glb/.gltf). Подключён сразу, используется только там, где у предмета задан model3d -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3/dist/model-viewer.min.js"></script>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <div class="logo">
+        <span class="logo-mark">⌬</span>
+        <span class="logo-text">OFFZONE<span class="dim">//</span>BADGE&nbsp;ARCHIVE</span>
+      </div>
+      <p class="tagline">коллекция бейджей и аддонов с конференций OFFZONE</p>
+    </div>
+  </header>
+
+  <nav class="event-tabs wrap" id="event-tabs" aria-label="Выбор конференции"></nav>
+
+  <main class="wrap" id="main">
+    <!-- Секция бейджа выбранного года -->
+    <section id="badge-section" class="badge-section"></section>
+
+    <!-- Фильтры категорий аддонов -->
+    <section class="addons-section">
+      <div class="addons-head">
+        <h2>Аддоны</h2>
+        <div class="filters" id="filters"></div>
+      </div>
+      <div class="cards-grid" id="addons-grid"></div>
+    </section>
+  </main>
+
+  <!-- Модальное окно с деталями аддона -->
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" id="modal">
+      <button class="modal-close" id="modal-close" aria-label="Закрыть">×</button>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p class="stats-line" id="stats-line"></p>
+      <p>Фанатский архив коллекции. Если у вас есть фото или факты о бейджах/аддонах — откройте issue или PR в репозитории.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
