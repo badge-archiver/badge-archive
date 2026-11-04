@@ -1,0 +1,14 @@
+{
+  "name": "Детектив",
+  "event": "offzone",
+  "year": 2023,
+  "manufacturer": "Osint Mindset",
+  "category": "community",
+  "rarity": "rare",
+  "rarityNote": "Очень редко встречается",
+  "obtainedFor": "Нет информации",
+  "description": "Аддон выдаваемый osint mindset'ом. Нет информации, выдавался ли он за активности, либо только членам Osint Mindset'а.",
+  "source": "https://t.me/osint_mindset/381",
+  "tags": [],
+  "todo": "возможно сменить на партнерский и добавить в начале"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Паяльники",
+  "event": "offzone",
+  "year": 2023,
+  "manufacturer": "Craft.Zone",
+  "category": "soldering",
+  "rarity": "common",
+  "rarityNote": "Было спаяно довольно много наборов в 2023 году",
+  "obtainedFor": "Аддон, который можно было самостоятельно спаять на конференции.",
+  "description": "Победитель в конкурсе на лучший дизайн аддона в 2023 году. Придумал Дмитрий М.",
+  "source": "https://t.me/bizone_hwlab/61",
+  "tags": [],
+  "order": 11
+}

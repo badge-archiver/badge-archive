@@ -1,0 +1,14 @@
+{
+  "name": "Медведь",
+  "event": "offzone",
+  "year": 2025,
+  "manufacturer": "Craft.Zone",
+  "category": "soldering",
+  "rarity": "common",
+  "rarityNote": "Было спаяно довольно много наборов в 2025 году",
+  "obtainedFor": "Аддон, который можно было самостоятельно спаять на конференции.",
+  "description": "Отсутствует",
+  "source": "https://t.me/bizone_hwlab/61",
+  "tags": [],
+  "order": 17
+}

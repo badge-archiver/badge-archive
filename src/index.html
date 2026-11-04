@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Бейджи — Badge // Archive</title>
+  <meta name="description" content="Интерактивные бейджи конференций OFFZONE, PHDays, ZeroNights и других — по конференциям и годам.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/img/favicon-32.png" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="assets/img/favicon-dark-32.png" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="assets/img/favicon-16.png" type="image/png" sizes="16x16" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="assets/img/favicon-dark-16.png" type="image/png" sizes="16x16" media="(prefers-color-scheme: dark)">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <link rel="preload" href="assets/fonts/jbm-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/jbm-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M10 8.5 7.5 12 10 15.5M14 8.5 16.5 12 14 15.5"/></svg>
+        BADGE<span class="dim">//</span>ARCHIVE
+      </a>
+      <nav class="main-nav" aria-label="Разделы">
+        <a href="" aria-current="page">Бейджи</a>
+        <a href="addons/">Аддоны</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content">
+    <noscript>
+      <div class="wrap" style="padding:3rem 0">
+        <p>// для работы архива нужен javascript</p>
+      </div>
+    </noscript>
+  </main>
+
+  <dialog id="item-modal" class="item-modal" aria-label="Детали айтема">
+    <div class="modal-head">
+      <span class="modal-kind"></span>
+      <button class="modal-close" aria-label="Закрыть">×</button>
+    </div>
+    <div class="modal-body"></div>
+  </dialog>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>фанатский архив · данные из открытых источников</span>
+      <span id="footer-stats"></span>
+      <span>есть фото или факты? <a href="https://github.com/badge-archiver/badge-archive" target="_blank" rel="noopener">закидывай PR или issue ↗</a></span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { runBadgesPage } from "./assets/js/pages/badges.js";
+    runBadgesPage("");
+  </script>
+</body>
+</html>

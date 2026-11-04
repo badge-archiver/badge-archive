@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — сегмент не найден</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex">
+  <style>
+    /* самодостаточно: 404 отдаётся с любой глубины пути, внешние ассеты не подключаем */
+    body { margin: 0; background: #000; color: #E0E0E0; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; min-height: 100dvh; display: flex; align-items: center; }
+    body::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px); opacity: .5; }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 2rem; }
+    .code { font-size: clamp(64px, 14vw, 130px); font-weight: 800; color: #00FF41; line-height: 1; margin: 0; }
+    .msg { color: #94A3B8; margin: 1rem 0 2rem; }
+    a { color: #00FF41; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <p class="code">404</p>
+    <p class="msg">// segment not found: запрошенный путь не существует в архиве</p>
+    <p><a id="home" href="/">← вернуться в корень архива</a></p>
+  </main>
+  <script>
+    /* проектный сайт GitHub Pages живёт в подпапке — вычисляем её из текущего пути */
+    (function () {
+      var m = location.pathname.match(/^\/([^/]+)\//);
+      document.getElementById("home").href = m ? "/" + m[1] + "/" : "/";
+    })();
+  </script>
+</body>
+</html>

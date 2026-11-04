@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- лого: гексагон + терминальные скобки. Цвет — по теме системы:
+       чёрный на светлой, белый на тёмной. Фавиконка живёт в табе —
+       зелёный там не читается на белом -->
+  <style>
+    path { stroke: #000; }
+    @media (prefers-color-scheme: dark) { path { stroke: #fff; } }
+  </style>
+  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+        fill="none" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M10 8.5 7.5 12 10 15.5M14 8.5 16.5 12 14 15.5"
+        fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

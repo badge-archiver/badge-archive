@@ -1,0 +1,31 @@
+{
+  "title": "Badge Archive",
+  "tagline": "архив бейджей и аддонов с конференций",
+  "events": {
+    "offzone": { "label": "OFFZONE", "color": "#00FF41", "order": 1 },
+    "phdays": { "label": "PHDays", "color": "#4FC3F7", "order": 2 },
+    "dc78422": { "label": "DC78422", "color": "#FFB300", "order": 3 },
+    "zeronights": { "label": "ZeroNights", "color": "#E040FB", "order": 4 }
+  },
+  "categories": {
+    "partner": { "label": "Партнёрский", "color": "#4FC3F7", "order": 1 },
+    "soldering": { "label": "Зона пайки", "color": "#FFB300", "order": 2 },
+    "community": { "label": "Комьюнити", "color": "#E040FB", "order": 3 }
+  },
+  "rarities": {
+    "common": { "label": "Обычный", "color": "#B0B0B0", "order": 1 },
+    "uncommon": { "label": "Необычный", "color": "#4CAF50", "order": 2 },
+    "rare": { "label": "Редкий", "color": "#2196F3", "order": 3 },
+    "epic": { "label": "Эпический", "color": "#9C27B0", "order": 4 },
+    "legendary": { "label": "Легендарный", "color": "#FF9800", "order": 5 },
+    "unknown": { "label": "Неизвестно", "color": "#616161", "order": 6 }
+  },
+  "facets": [
+    { "field": "year", "label": "Год", "sort": "desc" },
+    { "field": "event", "label": "Конференция", "sort": "config" },
+    { "field": "category", "label": "Категория", "sort": "config" },
+    { "field": "rarity", "label": "Редкость", "sort": "config" },
+    { "field": "manufacturer", "label": "Изготовитель", "sort": "alpha" },
+    { "field": "tags", "label": "Теги", "sort": "alpha" }
+  ]
+}
