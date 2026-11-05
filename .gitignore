@@ -1,5 +1,3 @@
-# dist собирается локально и в CI — в репозиторий не попадает
 dist/
 node_modules/
 *.log
-PHOTOS

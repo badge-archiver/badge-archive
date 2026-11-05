@@ -2,7 +2,7 @@
  * Браузерный смоук-тест (Playwright + Chromium).
  * Запуск: node tools/test-browser.mjs [baseURL]
  * Проверяет ровно то, что ломалось в руках пользователя:
- *   1. горизонтальный скролл в модалке с длинным URL в описании (#oz26-addon-ssti)
+ *   1. горизонтальный скролл в модалке с длинным URL в описании (#oz26-ssti)
  *   2. лайтбокс не остаётся висеть на странице после закрытия (display:none)
  *   3. листание фото в лайтбоксе: стрелки и колесо
  *   4. back/ESC закрывают модалку, хеш чистится
@@ -29,7 +29,7 @@ async function newPage(width, height) {
 
 for (const [w, hmm, label] of [[1280, 800, "десктоп"], [375, 700, "мобила"]]) {
   const { ctx, page } = await newPage(w, hmm);
-  await page.goto(`${BASE}/addons/#oz26-addon-ssti`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/addons/#oz26-ssti`, { waitUntil: "networkidle" });
   const dialog = page.locator("dialog.item-modal[open]");
   await dialog.waitFor({ timeout: 5000 });
   await page.waitForTimeout(150); // отрисовка контента

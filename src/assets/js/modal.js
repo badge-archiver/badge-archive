@@ -11,7 +11,7 @@
  * вложенные showModal() стекуются, Esc нативно закрывает только верхний.
  * Листание фото: стрелки ← →, колесо мыши, свайп — и в галерее, и в лайтбоксе.
  */
-import { h, icon, chip, ref, PLACEHOLDER, assetUrl, richText } from "./core.js";
+import { h, icon, chip, ref, PLACEHOLDER, assetUrl, photo, richText } from "./core.js";
 
 const MODEL_VIEWER_CDN = "https://cdn.jsdelivr.net/npm/@google/model-viewer@3/dist/model-viewer.min.js";
 let modelViewerLoading = null;
@@ -159,7 +159,7 @@ export function createItemModal({ site, kind, items }) {
 
     photos.forEach((p, i) => {
       const b = h("button", { role: "tab", "aria-current": i === 0 ? "true" : "false", "aria-label": `Фото ${i + 1}`, onclick: () => setPhoto(i) },
-        h("img", { src: assetUrl(p.src), alt: "", loading: "lazy", decoding: "async" }));
+        photo(p.src, { alt: "" }));
       thumbs.append(b);
     });
     if (photos.length > 1) col.append(thumbs);

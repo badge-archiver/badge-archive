@@ -91,25 +91,64 @@ export function assetUrl(path) {
   return path ? ASSET_ROOT + path : path;
 }
 
+/* Ленивая загрузка — свой IntersectionObserver, НЕ нативный loading="lazy":
+   Chromium на медленной сети запускает нативную загрузку слишком поздно, а запросы,
+   стартовавшие «на подлёте», занимают соединения — видимые карточки ждут хвост очереди.
+   Политика: грузим ТОЛЬКО то, что в вьюпорте (+небольшой запас против мигания).
+   Незагруженная картинка, выехавшая из вьюпорта, отменяется (снятие src прерывает
+   запрос) и перезапустится при возврате — скролл и есть триггер загрузки. */
+let lazyIO = null;
+function getLazyIO() {
+  if (!lazyIO) {
+    lazyIO = new IntersectionObserver((entries, io) => {
+      for (const e of entries) {
+        const img = e.target;
+        if (e.isIntersecting) {
+          /* ВНИМАНИЕ: complete===true и у img БЕЗ src (спека!) — «готово» это
+             complete && naturalWidth>0, иначе отменённые/новые неотличимы */
+          if (img.complete && img.naturalWidth > 0) { io.unobserve(img); continue; } /* готово */
+          if (!img.getAttribute("src") && img.dataset.src) { /* новая или отменённая — старт/рестарт */
+            img.fetchPriority = "high"; /* зона загрузки = видимость, второстепенных нет */
+            img.src = img.dataset.src;
+          }
+        } else if (!img.isConnected) {
+          io.unobserve(img); /* узел удалён из DOM (перерисовка сетки) — не копим */
+        } else if (img.getAttribute("src") && !img.complete) {
+          img.removeAttribute("src"); /* ускроллили недогруженной — прерываем запрос */
+        }
+      }
+    }, { rootMargin: "100px 0px" }); /* чуть-чуть на подлёт, чтобы не мигало на быстрой сети */
+  }
+  return lazyIO;
+}
+
 export function photo(src, { alt = "", cls = "", w = null, h2 = null, eager = false } = {}) {
+  const url = src ? ASSET_ROOT + src : null;
   const img = h("img", {
-    src: src ? ASSET_ROOT + src : PLACEHOLDER,
     alt,
     class: cls,
-    loading: eager ? "eager" : "lazy",
     decoding: "async",
+    ...(url && eager ? { src: url } : {}), /* атрибут src не ставим вовсе: пустой "" бьёт запросом в текущую страницу */
   });
   if (w && h2) {
     img.setAttribute("width", w);
     img.setAttribute("height", h2);
   }
-  if (src) {
-    img.addEventListener("error", () => {
-      if (img.dataset.fallback) return;
-      img.dataset.fallback = "1";
-      img.src = PLACEHOLDER;
-    });
+  if (!url) {
+    img.src = PLACEHOLDER;
+    return img;
   }
+  if (eager) {
+    /* уже назначен выше */
+  } else {
+    img.dataset.src = url;
+    getLazyIO().observe(img);
+  }
+  img.addEventListener("error", () => {
+    if (img.dataset.fallback) return;
+    img.dataset.fallback = "1";
+    img.src = PLACEHOLDER;
+  });
   return img;
 }
 
