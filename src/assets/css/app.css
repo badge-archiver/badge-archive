@@ -329,7 +329,12 @@ button {
   text-align: left;
   width: 100%;
 }
-.card:hover, .card:focus-visible { border-color: var(--primary); box-shadow: 0 0 16px var(--primary-dim); }
+.card:focus-visible { border-color: var(--primary); box-shadow: 0 0 16px var(--primary-dim); }
+/* hover — только устройствам с реальным курсором: на таче :hover залипает после
+   тапа, и закрытая карточка оставалась подсвеченной рамкой */
+@media (hover: hover) {
+  .card:hover { border-color: var(--primary); box-shadow: 0 0 16px var(--primary-dim); }
+}
 
 .card-photo-wrap {
   aspect-ratio: 1 / 1;

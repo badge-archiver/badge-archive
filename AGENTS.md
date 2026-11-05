@@ -10,6 +10,7 @@
 - `npm run editor` — GUI-редактор карточек на :4174, пишет `meta.json` напрямую (2 пробела + newline).
 - `npm test` — юнит фасеточного движка, без браузера (импортирует `src/assets/js/facets.js` напрямую, стабает `location`/`history`).
 - `npm run test:browser` — Playwright-смоук. Требует уже запущенного `npm run serve` (:4173, или передать baseURL аргументом). Разовая установка: `npm i && npx playwright install chromium`.
+- `npm run test:touch` — мобильный смоук (hasTouch, тап): модалка и **незалипание рамки карточки после закрытия** (hover на таче залипает, поэтому он в `@media (hover: hover)`, а модалка blur'ит карточку-триггер). Тоже требует `npm run serve`.
 - `node tools/test-editor.mjs` — e2e редактора. Требует запущенного `npm run editor` (:4174). Пишет и откатывает `addons/oz24-tbank/meta.json` — не держать этот айтем открытым в редакторе во время прогона.
 - `npm run resize-images -- --dry-run` — пережатие картинок in-place (sharp, dev-зависимость). Перед боевым прогоном без `--dry-run` закоммититься: перезапись без бэкапа, git — единственный откат.
 - `npm run migrate` сломан: скрипта `tools/migrate.mjs` не существует, в `package.json` остался хвост.

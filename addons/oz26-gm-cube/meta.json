@@ -4,10 +4,9 @@
   "year": 2026,
   "manufacturer": "M5Stack",
   "category": "community",
-  "rarity": "unknown",
+  "rarity": "unique",
   "rarityNote": "Нет информации",
   "obtainedFor": "Нет информации",
   "description": "Самоделка на базе Official ATOMS3R Compact ESP32-S3 Dev Kit with 0.85-inch Screen, 8MB onboard Flash, and 8MB PSRAM, White (Atom S3R - C126)",
-  "source": "https://t.me/offzone_moscow/1707",
-  "tags": []
+  "source": "https://t.me/offzone_moscow/1707"
 }

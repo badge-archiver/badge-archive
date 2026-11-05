@@ -4,11 +4,10 @@
   "year": 2025,
   "manufacturer": "Т-Банк",
   "category": "partner",
-  "rarity": "unknown",
+  "rarity": "rare",
   "rarityNote": "Тираж неизвестен",
   "obtainedFor": "Нет информации",
   "description": "Защищает, наблюдает и мгновенно реагирует. Внутри NFC-метка с испытанием.",
   "source": "https://t.me/offzone_moscow/1236",
-  "tags": [],
   "order": 3
 }

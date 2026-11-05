@@ -306,6 +306,11 @@ export function createItemModal({ site, kind, items }) {
       if (openedByUs) history.back();
       else history.pushState(null, "", location.pathname + location.search);
     }
+    /* диалог возвращает фокус на карточку-триггер, и на таче/программном
+       возврате Chrome метит её :focus-visible — рамка «залипала». Снимаем фокус
+       ровно с карточки, остальное (кнопки фильтров и пр.) не трогаем */
+    const active = document.activeElement;
+    if (active && active.classList && active.classList.contains("card")) active.blur();
     body.replaceChildren();
     photoNav = null;
     openedByUs = false;

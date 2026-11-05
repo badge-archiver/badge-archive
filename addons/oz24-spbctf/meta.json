@@ -4,11 +4,10 @@
   "year": 2024,
   "manufacturer": "SPbCTF",
   "category": "community",
-  "rarity": "uncommon",
+  "rarity": "rare",
   "rarityNote": "100 штук",
   "obtainedFor": "Решить таски на LLM. Также можно было купить за 170 OFFCOIN.",
   "description": "Нету описания",
   "source": "https://t.me/spbctf/242372",
-  "tags": [],
   "todo": "возможно сменить на партнерский и добавить в начале"
 }
