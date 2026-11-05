@@ -1,20 +1,23 @@
 #!/usr/bin/env node
 /*
- * Даунскейл картинок для веба, in-place
+ * Даунскейл/пережатие картинок для веба, in-place
  * ------------------------------------------------
  * 1. Рекурсивно бежим по каталогам (node_modules/.git/dist — мимо, там мусор)
- * 2. Ширина > max-width (по умолчанию 2000)? → ресайз с сохранением пропорций (Lanczos3)
- *    + --keep-size: БЕЗ ресайза — просто дожимаем всё что найдём (JPEG q90, PNG lossless)
+ * 2. Кандидат на обработку: ширина > max-width (дефолт 2500) ИЛИ вес > max-kb (дефолт 800 КБ)
+ *    - широкий  → ресайз по ширине, пропорции сохранены (Lanczos3) + пережатие
+ *    - тяжёлый  → только пережатие, разрешение НЕ трогаем
+ *    + --keep-size: пережать вообще всё, без условий и без ресайза
  * 3. Пережимаем оптимально для веба: mozjpeg / PNG-smart / webp
  * 4. Страховки: EXIF-поворот печём в пиксели, анимацию не трогаем,
  *    файл НЕ перезаписывается, если новый вариант тяжелее старого.
  *
- * Запуск:  node tools/resize-images.mjs [каталог] [--max-width=2000] [--jpeg-quality=82|90] [--keep-size] [--dry-run] [--skip=a,b]
+ * Запуск:  node tools/resize-images.mjs [каталог] [--max-width=2500] [--max-kb=800] [--jpeg-quality=N] [--keep-size] [--dry-run] [--skip=a,b]
  * Пример:  npm run resize-images -- --dry-run
- *          npm run resize-images -- --keep-size --dry-run
+ *          tools\resize-images.cmd --dry-run
  *
  * ВАЖНО: перезапись in-place. Сначала закоммитьте изменения, гит — единственный откат.
- * ВАЖНО: JPEG→JPEG без ресайза = поколение потерь. Поэтому в --keep-size дефолт q90, а не q82.
+ * ВАЖНО: JPEG→JPEG без ресайза = поколение потерь. Поэтому для «только пережатие»
+ *        дефолт q90, для ресайза — q82 (даунскейл замыливает артефакты, можно смелее).
  */
 import { readdirSync, statSync, existsSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
 import { join, extname, relative } from "node:path";
@@ -34,11 +37,18 @@ const DRY_RUN = args.includes("--dry-run");
 const KEEP_SIZE = args.includes("--keep-size"); // не трогаем разрешение, только пережимаем
 
 const targetDir = args.find((a) => !a.startsWith("--")) || ROOT;
-const MAX_WIDTH = Number(flag("max-width", 2000)) | 0;
-/* В ресайз-режиме q82: даунскейл замыливает артефакты старого сжатия, можно смелее.
-   В keep-size режиме пиксели те же — поколение потерь JPEG→JPEG никто не отменял,
-   поэтому дефолт выше: q90 (глаз не отличает, −36..77% по замерам). */
-const JPEG_QUALITY = Math.min(100, Math.max(50, Number(flag("jpeg-quality", KEEP_SIZE ? 90 : 82)) | 0));
+const MAX_WIDTH = Number(flag("max-width", 2500)) | 0;
+const MAX_KB = Math.max(1, Number(flag("max-kb", 800)) | 0); // тяжелее — кандидат на пережатие
+const MAX_BYTES = MAX_KB * 1024;
+
+/* Качество JPEG — per-file, зависит от того, что с файлом делают:
+   ресайз → q82 (Lanczos прощает смелость), «только пережатие» → q90
+   (пиксели те же, поколение потерь JPEG→JPEG никто не отменял).
+   Явный --jpeg-quality=N переопределяет оба случая. */
+const JPEG_QUALITY_FLAG = flag("jpeg-quality", null);
+const jpegQuality = (resizing) => JPEG_QUALITY_FLAG === null
+  ? (resizing ? 82 : 90)
+  : Math.min(100, Math.max(50, Number(JPEG_QUALITY_FLAG) | 0)); // ниже 50 — уже порнография, запретим
 const SKIP_DIRS = new Set([
   "node_modules", ".git", "dist", // стандратный мусор
   ...flag("skip", "").split(",").map((s) => s.trim()).filter(Boolean),
@@ -83,19 +93,19 @@ function walk(dir, out) {
 
 /*
  * JPEG: mozjpeg (trellis + progressive) — лучшее сжатие без видимых артефактов.
- * Ресайз-режим → 4:4:4: на свежепрожатом Lanczos мелкий текст бейджей с дефолтным 4:2:0
+ * Ресайз → 4:4:4: на свежепрожатом Lanczos мелкий текст бейджей с дефолтным 4:2:0
  * получает цветные каёмки — вот это реально "картинка пострадала".
- * keep-size режим → 4:2:0: исходники камерные, хрома УЖЕ субдискретизирована,
- * апсемплить её в 4:4:4 = +вес без единого бита новой информации. Наёбывать весы не будем.
+ * Без ресайза → 4:2:0: исходники камерные, хрома УЖЕ субдискретизирована,
+ * апсемплить её в 4:4:4 = +вес без единого бита новой информации.
  * EXIF печётся в пиксели при декоде, метаданные выкидываем — вебу они нахуй не нужны,
  * а весят порой десятки килобайт.
  */
-function encodeJpeg(img) {
+function encodeJpeg(img, resizing) {
   return img.jpeg({
-    quality: JPEG_QUALITY,
+    quality: jpegQuality(resizing),
     mozjpeg: true,          // медленнее libjpeg, зато -20..30% веса при том же качестве
     progressive: true,      // грузится «постепенно», UX лучше на медленном интернете
-    chromaSubsampling: KEEP_SIZE ? "4:2:0" : "4:4:4",
+    chromaSubsampling: resizing ? "4:4:4" : "4:2:0",
   }).toBuffer({ resolveWithObject: true });
 }
 
@@ -157,15 +167,17 @@ async function processFile(file, stats) {
     return;
   }
 
-  // Узкие картинки не трогаем ВООБЩЕ — ни байта не переписываем.
-  // Каждый лишний re-encode — поколение потерь, JPEG пережимать "просто так" нельзя.
-  // Исключение — keep-size: там пережатие и есть цель, ширину не проверяем.
-  if (!KEEP_SIZE && (!meta.width || meta.width <= MAX_WIDTH)) {
+  const oldSize = statSync(file).size;
+
+  // Кандидаты на обработку: широкие ЛИБО тяжёлые. Узкие и лёгкие не трогаем ВООБЩЕ —
+  // ни байта не переписываем: каждый лишний re-encode JPEG = поколение потерь.
+  // keep-size — исключение: там пережатие и есть цель, все условия летят к чёрту.
+  const needsResize = !KEEP_SIZE && meta.width > MAX_WIDTH;
+  const tooHeavy = oldSize > MAX_BYTES;
+  if (!KEEP_SIZE && !needsResize && !tooHeavy) {
     stats.skipped++;
     return;
   }
-
-  const oldSize = statSync(file).size;
 
   let result;
   try {
@@ -174,10 +186,10 @@ async function processFile(file, stats) {
     // .rotate() без аргументов довернёт ВТОРОЙ раз — и портретные фотки лягут боком.
     // Проверено на PXL-фото с orientation:8 — без rotate() получается 2000x2656, с ним 2000x1506.
     let img = sharp(file, { failOn: "none" }); // кривые EXIF/маркеры не должны ронять батч
-    if (!KEEP_SIZE) {
+    if (needsResize) {
       img = img.resize({ width: MAX_WIDTH, kernel: "lanczos3", withoutEnlargement: true, fit: "inside" });
     }
-    result = await ENCODERS[fmt](img);
+    result = await ENCODERS[fmt](img, needsResize);
   } catch (e) {
     stats.errors.push(`${rel}: ошибка обработки (${e.message})`);
     return;
@@ -192,7 +204,7 @@ async function processFile(file, stats) {
   }
 
   const saved = oldSize - result.data.length;
-  stats.resized++;
+  stats[needsResize ? "resized" : "recompressed"]++;
   stats.bytesSaved += saved;
   const dims = result.info.width !== meta.width
     ? `${meta.width}x${meta.height} → ${result.info.width}x${result.info.height}, `
@@ -236,9 +248,12 @@ const files = [];
 walk(targetDir, files);
 files.sort();
 
-const stats = { resized: 0, skipped: 0, animated: 0, bytesSaved: 0, errors: [] };
+const stats = { resized: 0, recompressed: 0, skipped: 0, animated: 0, bytesSaved: 0, errors: [] };
 
-const mode = KEEP_SIZE ? `Только пережатие, разрешение НЕ трогаем. JPEG q=${JPEG_QUALITY}.` : `Ресайз до ${MAX_WIDTH}px по ширине. JPEG q=${JPEG_QUALITY}.`;
+const q = JPEG_QUALITY_FLAG === null ? "82/90 (авто: ресайз/пережатие)" : `фикс. ${JPEG_QUALITY_FLAG}`;
+const mode = KEEP_SIZE
+  ? `Только пережатие всего подряд, разрешение НЕ трогаем. JPEG q=${q}.`
+  : `Кандидаты: ширина > ${MAX_WIDTH}px ИЛИ вес > ${MAX_KB} КБ. JPEG q=${q}.`;
 console.log(`Поиск: ${targetDir}`);
 console.log(`Найдено картинок: ${files.length}. ${mode}${DRY_RUN ? " DRY RUN (ничего не пишем)." : ""}\n`);
 
@@ -246,10 +261,11 @@ const t0 = Date.now();
 await runPool(files, stats);
 
 console.log(`\n────────── итого ──────────`);
-console.log(`Ресайзнуто:      ${stats.resized}`);
-console.log(`Уже в порядке:   ${stats.skipped}`);
-console.log(`Анимация (мимо): ${stats.animated}`);
-console.log(`Сэкономлено:     ${human(stats.bytesSaved)}`);
+console.log(`Ресайзнуто:           ${stats.resized}`);
+console.log(`Пережато (как есть):  ${stats.recompressed}`);
+console.log(`Уже в порядке:        ${stats.skipped}`);
+console.log(`Анимация (мимо):      ${stats.animated}`);
+console.log(`Сэкономлено:          ${human(stats.bytesSaved)}`);
 if (stats.errors.length) {
   console.log(`\nОшибки (${stats.errors.length}):`);
   for (const e of stats.errors) console.log(`  ! ${e}`);
