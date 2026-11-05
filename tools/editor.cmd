@@ -5,16 +5,16 @@ cd /d "%~dp0.."
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [!] node not found in PATH — нужен Node.js 18+
+  echo [!] node not found in PATH — need Node.js 18+
   pause
   exit /b 1
 )
 
 if "%~1"=="" (
-  echo Editor: http://localhost:4174/  ^(Ctrl+C — стоп^)
+  echo Editor: http://localhost:4174/  ^(Ctrl+C — stop^)
   start "" http://localhost:4174/
 ) else (
-  echo Editor: http://localhost:%~1/  ^(Ctrl+C — стоп^)
+  echo Editor: http://localhost:%~1/  ^(Ctrl+C — stop^)
 )
 
-call node item-editor\server.mjs %*
+call node tools\item-editor\server.mjs %*

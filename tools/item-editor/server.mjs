@@ -1,17 +1,32 @@
 /*
  * Локальный редактор карточек: отдаёт UI + API над badges/ и addons/.
- * Запуск из корня репы: node item-editor/server.mjs  →  http://localhost:4174
+ * Запуск: node tools/item-editor/server.mjs  →  http://localhost:4174
  * Ноль зависимостей. Пишет meta.json напрямую (2 пробела + перевод строки).
+ *
+ * Корень репо ищется ПО МАРКЕРУ site.config.json (подъём вверх по дереву),
+ * а не фиксированным числом "../..". Папку редактора уже один раз переносили —
+ * хардкод уровня сломался. Больше не сломается: кладите сервер куда хотите.
  */
 import { createServer } from "node:http";
 import { readFile, writeFile, readdir, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const PORT = Number(process.argv[2] ?? 4174);
+
+/* Поднимаемся от файла сервера вверх, пока не встретим site.config.json. */
+function findRoot(start) {
+  for (let dir = start; ; ) {
+    if (existsSync(join(dir, "site.config.json"))) return dir; // маркер корня репозитория
+    const parent = join(dir, "..");
+    if (parent === dir) throw new Error(`site.config.json не найден выше ${start} — запускайте из репозитория`);
+    dir = parent;
+  }
+}
+const ROOT = findRoot(HERE);
 
 const IMG_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif"]);
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;

@@ -6,7 +6,7 @@ cd /d "%~dp0.."
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [!] node not found in PATH — нужен Node.js 18+
+  echo [!] node not found in PATH — need Node.js 18+
   pause
   exit /b 1
 )

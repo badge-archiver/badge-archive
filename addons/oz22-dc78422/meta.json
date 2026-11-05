@@ -4,9 +4,9 @@
   "year": 2022,
   "manufacturer": "DC78422",
   "category": "community",
-  "rarity": "unknown",
-  "rarityNote": "Нет информации",
-  "obtainedFor": "Нет информации",
-  "description": "Нет информации",
+  "rarity": "unique",
+  "rarityNote": "3 шт и все уникальны по своему",
+  "obtainedFor": "Самостоятельная сборка",
+  "description": "Изготовлен из платы старого проекта DC78422 USB-Condom",
   "tags": []
 }

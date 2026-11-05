@@ -5,9 +5,10 @@
   "manufacturer": "Craft.Zone",
   "category": "soldering",
   "rarity": "common",
-  "rarityNote": "Было спаяно довольно много наборов в 2022 году",
+  "rarityNote": "Было спаяно довольно много наборов в 2022 и 2025 году",
   "obtainedFor": "Аддон, который можно было самостоятельно спаять на конференции.",
   "description": "Победитель в конкурсе на лучший дизайн аддона в 2022 году. Придумал Андрей К.",
   "source": "https://t.me/bizone_hwlab/61",
+  "schematic": "https://github.com/bi-zone/offzone-hw/tree/master/2025/terminal_addon",
   "tags": []
 }

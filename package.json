@@ -9,7 +9,7 @@
     "build": "node tools/build.mjs",
     "preview": "node tools/build.mjs && node tools/preview.mjs",
     "serve": "node tools/preview.mjs",
-    "editor": "node item-editor/server.mjs",
+    "editor": "node tools/item-editor/server.mjs",
     "resize-images": "node tools/resize-images.mjs",
     "test": "node tools/test-facets.mjs",
     "test:browser": "node tools/test-browser.mjs"

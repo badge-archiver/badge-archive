@@ -9,5 +9,6 @@
   "obtainedFor": "Аддон, который можно было самостоятельно спаять на конференции.",
   "description": "Отсутствует",
   "source": "https://t.me/bizone_hwlab/61",
+  "schematic": "https://github.com/bi-zone/offzone-hw/tree/master/2024/lamp_addon",
   "tags": []
 }

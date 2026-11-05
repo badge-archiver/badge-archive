@@ -18,7 +18,9 @@
     "rare": { "label": "Редкий", "color": "#2196F3", "order": 3 },
     "epic": { "label": "Эпический", "color": "#9C27B0", "order": 4 },
     "legendary": { "label": "Легендарный", "color": "#FF9800", "order": 5 },
-    "unknown": { "label": "Неизвестно", "color": "#616161", "order": 6 }
+    "exclusive": { "label": "Эксклюзивный", "color": "#F44336", "order": 6 },
+    "unique": { "label": "Уникальный", "color": "#FFD700", "order": 7 },
+    "unknown": { "label": "Неизвестно", "color": "#616161", "order": 8 }
   },
   "facets": [
     { "field": "year", "label": "Год", "sort": "desc" },

@@ -172,9 +172,9 @@ function readItem(kind, slug) {
 /* ---------------- валидация ---------------- */
 
 const ALLOWED = {
-  badge: ["name", "event", "year", "location", "description", "source", "model3d", "cover", "order", "todo"],
+  badge: ["name", "event", "year", "location", "description", "source", "schematic", "model3d", "cover", "order", "todo"],
   addon: ["name", "event", "year", "manufacturer", "category", "rarity", "rarityNote",
-    "obtainedFor", "description", "source", "tags", "model3d", "cover", "order", "todo"],
+    "obtainedFor", "description", "source", "schematic", "tags", "model3d", "cover", "order", "todo"],
 };
 
 function validate(item, kind) {
@@ -183,6 +183,11 @@ function validate(item, kind) {
   if (typeof item.name !== "string" || !item.name.trim()) errors.push(`${id}: пустое name`);
   if (!config.events[item.event]) errors.push(`${id}: event "${item.event}" отсутствует в site.config.json`);
   if (!Number.isInteger(item.year) || item.year < 2000 || item.year > 2100) errors.push(`${id}: year должен быть числом 2000–2100`);
+  // «Исходники проекта» (schematic) — строго ссылка с протоколом. Без http(s):// браузер
+  // считает href относительным и молча уводит на 404 внутри сайта. Ловим красным CI.
+  if (item.schematic !== undefined && (typeof item.schematic !== "string" || !/^https?:\/\//.test(item.schematic.trim()))) {
+    errors.push(`${id}: schematic должен быть URL вида https://… (или отсутствовать)`);
+  }
   if (kind === "addon") {
     if (item.category && !config.categories[item.category]) errors.push(`${id}: category "${item.category}" нет в конфиге`);
     if (item.rarity && !config.rarities[item.rarity]) errors.push(`${id}: rarity "${item.rarity}" нет в конфиге`);

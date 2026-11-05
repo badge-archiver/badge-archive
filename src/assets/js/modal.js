@@ -227,9 +227,15 @@ export function createItemModal({ site, kind, items }) {
     }
     col.append(table);
 
-    if (item.source) {
-      col.append(h("p", { class: "src-link" },
-        h("a", { href: item.source, target: "_blank", rel: "noopener" }, "источник ", icon("external", 13))));
+    /* «источник» и «исходники проекта» — одним абзацем: влезают — одна строка,
+       не влезают — обычный перенос текста, без отдельной строки на каждую ссылку */
+    const srcLinks = [];
+    if (item.source) srcLinks.push(h("a", { href: item.source, target: "_blank", rel: "noopener" }, "источник ", icon("external", 13)));
+    if (item.schematic) srcLinks.push(h("a", { href: item.schematic, target: "_blank", rel: "noopener" }, "исходники проекта ", icon("external", 13)));
+    if (srcLinks.length) {
+      const p = h("p", { class: "src-link" });
+      srcLinks.forEach((a, i) => { if (i) p.append(" · "); p.append(a); });
+      col.append(p);
     }
 
     /* кросс-ссылки */

@@ -341,6 +341,7 @@ function renderForm() {
     field("description", "Описание (ссылки: голый URL или [подпись](url))", { type: "textarea", full: true }),
     field("tags", "Теги (через запятую)", { full: true, hint: "новые теги сами появятся в фильтрах сайта" }),
     field("source", "Источник (URL)"),
+    field("schematic", "Исходники проекта (URL)"),
     field("model3d", "3D-модель (файл .glb в папке)"),
     field("cover", "Обложка (имя файла)"),
     field("order", "Порядок в секции", { type: "number" }),
