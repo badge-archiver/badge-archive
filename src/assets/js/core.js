@@ -91,33 +91,119 @@ export function assetUrl(path) {
   return path ? ASSET_ROOT + path : path;
 }
 
-/* Ленивая загрузка — свой IntersectionObserver, НЕ нативный loading="lazy":
-   Chromium на медленной сети запускает нативную загрузку слишком поздно, а запросы,
-   стартовавшие «на подлёте», занимают соединения — видимые карточки ждут хвост очереди.
-   Политика: грузим ТОЛЬКО то, что в вьюпорте (+небольшой запас против мигания).
-   Незагруженная картинка, выехавшая из вьюпорта, отменяется (снятие src прерывает
-   запрос) и перезапустится при возврате — скролл и есть триггер загрузки. */
+/* Ленивая загрузка — движок в `core.js`, НЕ нативный loading="lazy" (Chromium на
+   медленной сети стартует поздно и строки карточек приезжают пустыми).
+
+   Один sweep() по наблюдаемым:
+   - near (вьюпорт ± 100px): старт всегда, fetchPriority="high";
+   - остальное: prefetch-очередь ПО БЛИЗОСТИ к вьюпорту, партиями (PREFETCH_BATCH),
+     только пока в near нет незагруженных (idle: юзер стоит — тянем хвост и
+     НЕ ЖДЁМ скролла; партия load → следующий sweep → следующая партия);
+   - hidden (нулевые ректы, display:none): отмена.
+
+   КЛЮЧЕВЫЕ ИНВАРИАНТЫ:
+   1. Гистерезис: начатая загрузка near/ближнего rest НЕ отменяется никогда —
+      шторм «старт→сброс→рестарт с нуля» оставляет строки пустыми навсегда.
+   2. Отмена хвоста только по дальности: > HARD_CANCEL всегда, > CANCEL_DIST
+      при активном nearPending (юзер реально ушёл смотреть другое место).
+
+   Триггеры sweep: IO-батч, scroll/resize (rAF), load/error. Скролл-триггер
+   обязателен: переход rest→near внутри зоны наблюдения IO не сообщает.
+
+   Грабли (не наступать): complete===true у img БЕЗ src (спека!) — «готово» это
+   complete && naturalWidth>0; detached-узел и предок с display:none дают нулевые
+   ректы (detached посчитался бы near) — вычищать/детектить отдельно. */
+
+const NEAR = 100, FAR = 1200;         /* зоны: старт и «тёплый» охват */
+const CANCEL_DIST = 1200, HARD_CANCEL = 3000; /* отмена хвоста: при nearPending / всегда */
+const PREFETCH_BATCH = 12;            /* размер idle-партии: полоса не захлёбывается */
+
 let lazyIO = null;
-function getLazyIO() {
-  if (!lazyIO) {
-    lazyIO = new IntersectionObserver((entries, io) => {
-      for (const e of entries) {
-        const img = e.target;
-        if (e.isIntersecting) {
-          /* ВНИМАНИЕ: complete===true и у img БЕЗ src (спека!) — «готово» это
-             complete && naturalWidth>0, иначе отменённые/новые неотличимы */
-          if (img.complete && img.naturalWidth > 0) { io.unobserve(img); continue; } /* готово */
-          if (!img.getAttribute("src") && img.dataset.src) { /* новая или отменённая — старт/рестарт */
-            img.fetchPriority = "high"; /* зона загрузки = видимость, второстепенных нет */
-            img.src = img.dataset.src;
-          }
-        } else if (!img.isConnected) {
-          io.unobserve(img); /* узел удалён из DOM (перерисовка сетки) — не копим */
-        } else if (img.getAttribute("src") && !img.complete) {
-          img.removeAttribute("src"); /* ускроллили недогруженной — прерываем запрос */
-        }
+const tracked = new Set();
+let sweepScheduled = false;
+
+function zoneOf(img) {
+  if (img.getClientRects().length === 0) return "hidden"; /* display:none у предка (закрытая модалка и т.п.) */
+  const r = img.getBoundingClientRect();
+  if (r.bottom > -NEAR && r.top < innerHeight + NEAR) return "near";
+  return "rest"; /* дальняя сортировка по близости — см. sweep, фиксированный far-предел
+                    не тянет хвост за партией: юзер стоит, ректы не меняются, зона бы
+                    никогда не расширилась */
+}
+
+function distanceToViewport(r) {
+  const vpTop = 0, vpBot = innerHeight;
+  if (r.bottom < vpTop) return vpTop - r.bottom;   /* выше */
+  if (r.top > vpBot) return r.top - vpBot;         /* ниже */
+  return 0;                                        /* в вьюпорте */
+}
+
+function sweep() {
+  let nearPending = false;
+  let restLoading = 0;
+  const rest = []; /* { img, dist } — idle-кандидаты по близости */
+  for (const img of tracked) {
+    if (!img.isConnected) { drop(img); continue; }
+    if (img.complete && img.naturalWidth > 0) { drop(img); continue; } /* готово */
+    const z = zoneOf(img);
+    if (z === "hidden") {
+      if (img.getAttribute("src")) img.removeAttribute("src"); /* невидимое — не грузим */
+      continue;
+    }
+    const r = img.getBoundingClientRect();
+    const dist = distanceToViewport(r);
+    if (z === "near") {
+      nearPending = true;
+      if (!img.getAttribute("src") && img.dataset.src) { /* новая или отменённая */
+        img.fetchPriority = "high";
+        img.src = img.dataset.src;
       }
-    }, { rootMargin: "100px 0px" }); /* чуть-чуть на подлёт, чтобы не мигало на быстрой сети */
+      continue;
+    }
+    /* rest: качается? гистерезис с порогами отмены, стартует — в очередь */
+    if (img.getAttribute("src")) {
+      if (dist > HARD_CANCEL || (dist > CANCEL_DIST && nearPending)) {
+        img.removeAttribute("src"); /* юзер ушёл далеко — хвост больше не нужен */
+      } else {
+        restLoading++; /* поддерживаем уровень очереди, а не лавину от каждого load */
+      }
+      continue;
+    }
+    rest.push({ img, dist });
+  }
+  if (!nearPending) {
+    /* экран загружен — тянем запас ближайший-вперёд, ДОПОЛНЯЯ очередь до уровня
+       PREFETCH_BATCH: сколько доехало — столько новых стартует. Без уровня каждый
+       load досыпал бы партию, и полоса делилась на десятки ручьёв */
+    const slots = PREFETCH_BATCH - restLoading;
+    if (slots > 0) {
+      rest.sort((a, b) => a.dist - b.dist);
+      for (const { img } of rest.slice(0, slots)) {
+        img.fetchPriority = "low";
+        img.src = img.dataset.src;
+      }
+    }
+  }
+}
+
+function scheduleSweep() {
+  if (sweepScheduled) return;
+  sweepScheduled = true;
+  requestAnimationFrame(() => { sweepScheduled = false; sweep(); });
+}
+
+function drop(img) {
+  tracked.delete(img);
+  lazyIO?.unobserve(img);
+}
+
+function onBatch() { sweep(); }
+
+export function getLazyIO() {
+  if (!lazyIO) {
+    lazyIO = new IntersectionObserver(onBatch, { rootMargin: FAR + "px 0px" });
+    addEventListener("scroll", scheduleSweep, { passive: true });
+    addEventListener("resize", scheduleSweep, { passive: true });
   }
   return lazyIO;
 }
@@ -142,7 +228,13 @@ export function photo(src, { alt = "", cls = "", w = null, h2 = null, eager = fa
     /* уже назначен выше */
   } else {
     img.dataset.src = url;
+    tracked.add(img);
     getLazyIO().observe(img);
+    scheduleSweep(); /* старт без ожидания IO-батча (первый кадр) */
+    /* по завершении загрузки/ошибки: снять с наблюдения и пересчитать политику —
+       ближняя зона опустела → пора тянуть дальний запас */
+    img.addEventListener("load", () => { drop(img); scheduleSweep(); }, { once: true });
+    img.addEventListener("error", () => { drop(img); scheduleSweep(); }, { once: true });
   }
   img.addEventListener("error", () => {
     if (img.dataset.fallback) return;
