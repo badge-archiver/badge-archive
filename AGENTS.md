@@ -11,6 +11,7 @@
 - `npm test` — юнит фасеточного движка, без браузера (импортирует `src/assets/js/facets.js` напрямую, стабает `location`/`history`).
 - `npm run test:browser` — Playwright-смоук. Требует уже запущенного `npm run serve` (:4173, или передать baseURL аргументом). Разовая установка: `npm i && npx playwright install chromium`.
 - `npm run test:touch` — мобильный смоук (hasTouch, тап): модалка и **незалипание рамки карточки после закрытия** (hover на таче залипает, поэтому он в `@media (hover: hover)`, а модалка blur'ит карточку-триггер). Тоже требует `npm run serve`.
+- `npm run test:mobile` — мобильная модалка: вертикальный скролл длинных карточек (скроллит сам `dialog.item-modal`, шапка sticky; `.modal-body` на мобиле без max-height — иначе контент резался без возможности прокрутки). Тач-свайп в тесте — через CDP `Input.dispatchTouchEvent`, мышиный drag в эмуляции тач-скролл не даёт. Тоже требует `npm run serve`.
 - `node tools/test-editor.mjs` — e2e редактора. Требует запущенного `npm run editor` (:4174). Пишет и откатывает `addons/oz24-tbank/meta.json` — не держать этот айтем открытым в редакторе во время прогона.
 - `npm run resize-images -- --dry-run` — пережатие картинок in-place (sharp, dev-зависимость). Перед боевым прогоном без `--dry-run` закоммититься: перезапись без бэкапа, git — единственный откат.
 - `npm run migrate` сломан: скрипта `tools/migrate.mjs` не существует, в `package.json` остался хвост.

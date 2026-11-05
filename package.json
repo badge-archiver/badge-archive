@@ -13,7 +13,8 @@
     "resize-images": "node tools/resize-images.mjs",
     "test": "node tools/test-facets.mjs",
     "test:browser": "node tools/test-browser.mjs",
-    "test:touch": "node tools/test-touch.mjs"
+    "test:touch": "node tools/test-touch.mjs",
+    "test:mobile": "node tools/test-modal-mobile.mjs"
   },
   "engines": {
     "node": ">=18"

@@ -576,7 +576,13 @@ dialog.filters-modal::backdrop { background: rgba(0, 0, 0, 0.7); }
   .side-col { position: static; max-height: none; }
   .filter-panel { display: none; }
   .filters-open-btn { display: inline-flex; }
-  .modal-body { grid-template-columns: 1fr; overflow-y: visible; max-height: calc(100dvh - 7.5rem); }
+  /* Мобильная модалка: скроллит сам диалог. .modal-body без max-height и без
+     собственного скролла — иначе получалось: тело обрезано по max-height при
+     overflow: visible, а диалог с overflow: hidden резал вывалившееся —
+     длинные карточки не скроллились вообще */
+  dialog.item-modal { overflow-x: hidden; overflow-y: auto; }
+  .modal-body { grid-template-columns: 1fr; overflow-y: visible; max-height: none; }
+  .modal-head { position: sticky; top: 0; background: var(--bg-card); z-index: 1; }
   .modal-media { border-right: none; border-bottom: 1px solid var(--border); }
 }
 
