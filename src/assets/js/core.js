@@ -95,17 +95,22 @@ export function assetUrl(path) {
    медленной сети стартует поздно и строки карточек приезжают пустыми).
 
    Один sweep() по наблюдаемым:
-   - near (вьюпорт ± 100px): старт всегда, fetchPriority="high";
-   - остальное: prefetch-очередь ПО БЛИЗОСТИ к вьюпорту, партиями (PREFETCH_BATCH),
-     только пока в near нет незагруженных (idle: юзер стоит — тянем хвост и
-     НЕ ЖДЁМ скролла; партия load → следующий sweep → следующая партия);
+   - near (вьюпорт ± NEAR): немедленный старт, fetchPriority="high";
+   - warm (до WARM от вьюпорта): упреждающий старт "low" пока есть свободные
+     слоты загрузки — авангард качается ЗАРАНЕЕ, на подлёте юзера;
+   - дальний rest: старт только когда near чист (юзер стоит — idle тянет хвост
+     до конца списка, не дожидаясь скролла);
    - hidden (нулевые ректы, display:none): отмена.
 
-   КЛЮЧЕВЫЕ ИНВАРИАНТЫ:
-   1. Гистерезис: начатая загрузка near/ближнего rest НЕ отменяется никогда —
-      шторм «старт→сброс→рестарт с нуля» оставляет строки пустыми навсегда.
-   2. Отмена хвоста только по дальности: > HARD_CANCEL всегда, > CANCEL_DIST
-      при активном nearPending (юзер реально ушёл смотреть другое место).
+   ГЛАВНЫЙ ИНВАРИАНТ (нарушение = баг «строки не прогружаются до конца страницы»):
+   качающаяся картинка НЕ отменяется из-за появившейся near-работы. При
+   непрерывном листании nearPending ВСЕГДА true — связанная с ним отмена косила
+   всё недокачанное за спиной (старт→сброс→рестарт с нуля), и клетки оставались
+   пустыми, пока юзер не упирался в конец страницы. Отмена качающегося — только
+   безусловно за CANCEL_DIST или в hidden.
+
+   Второй инвариант: суммарно качающихся ≤ MAX_LOADING — полоса не делится на
+   десятки ручьёв, у near всегда есть доля.
 
    Триггеры sweep: IO-батч, scroll/resize (rAF), load/error. Скролл-триггер
    обязателен: переход rest→near внутри зоны наблюдения IO не сообщает.
@@ -114,21 +119,31 @@ export function assetUrl(path) {
    complete && naturalWidth>0; detached-узел и предок с display:none дают нулевые
    ректы (detached посчитался бы near) — вычищать/детектить отдельно. */
 
-const NEAR = 100, FAR = 1200;         /* зоны: старт и «тёплый» охват */
-const CANCEL_DIST = 1200, HARD_CANCEL = 3000; /* отмена хвоста: при nearPending / всегда */
-const PREFETCH_BATCH = 12;            /* размер idle-партии: полоса не захлёбывается */
+const NEAR = 150;            /* зона немедленного high-старта (вьюпорт ± это) */
+const WARM_MIN = 900;        /* упреждающий low-старт на подлёте: минимум */
+const WARM_LEAD_MS = 1300;   /* форы по времени: warm = скорость скролла × это */
+const WARM_MAX = 3500;       /* и потолок зоны упреждения */
+const WARM_SLOTS = 6;        /* гарант слотов авангарду — НЕ делятся с хвостом */
+const TAIL_SLOTS = 6;        /* лимит качающегося хвоста (за warm-зоной) */
+const SOCKET_BUDGET = 7;     /* качающихся не-near больше — жертвуем самыми дальними */
+const CANCEL_DIST = 6000;    /* безусловная отмена качающегося: юзер ушёл далеко */
+const FAR = 1200;            /* rootMargin IO-будильника */
 
 let lazyIO = null;
 const tracked = new Set();
 let sweepScheduled = false;
 
+/* скорость скролла (px/s): зона упреждения обязана масштабироваться темпом юзера.
+   Отклик быстрый (0.5): резкий первый флинг не должен встречать минимальную зону */
+let lastY = null, lastT = 0, velocity = 0;
+
+function currentWarm() {
+  return Math.max(WARM_MIN, Math.min(WARM_MAX, Math.round(velocity * WARM_LEAD_MS / 1000)));
+}
+
 function zoneOf(img) {
   if (img.getClientRects().length === 0) return "hidden"; /* display:none у предка (закрытая модалка и т.п.) */
-  const r = img.getBoundingClientRect();
-  if (r.bottom > -NEAR && r.top < innerHeight + NEAR) return "near";
-  return "rest"; /* дальняя сортировка по близости — см. sweep, фиксированный far-предел
-                    не тянет хвост за партией: юзер стоит, ректы не меняются, зона бы
-                    никогда не расширилась */
+  return "live"; /* близость к вьюпорту считаем по dist — см. sweep */
 }
 
 function distanceToViewport(r) {
@@ -138,58 +153,89 @@ function distanceToViewport(r) {
   return 0;                                        /* в вьюпорте */
 }
 
+function start(img, priority) {
+  img.fetchPriority = priority;
+  img.src = img.dataset.src;
+}
+
 function sweep() {
-  let nearPending = false;
-  let restLoading = 0;
-  const rest = []; /* { img, dist } — idle-кандидаты по близости */
+  const warmDist = currentWarm();
+  let nearBusy = false;      /* в near есть незагруженная — юзер активно смотрит/едет */
+  const loading = [];        /* качающиеся не-near: { img, dist } — для бюджетирования сокетов */
+  const warm = [], idle = [];
   for (const img of tracked) {
     if (!img.isConnected) { drop(img); continue; }
     if (img.complete && img.naturalWidth > 0) { drop(img); continue; } /* готово */
-    const z = zoneOf(img);
-    if (z === "hidden") {
+    if (zoneOf(img) === "hidden") {
       if (img.getAttribute("src")) img.removeAttribute("src"); /* невидимое — не грузим */
       continue;
     }
-    const r = img.getBoundingClientRect();
-    const dist = distanceToViewport(r);
-    if (z === "near") {
-      nearPending = true;
-      if (!img.getAttribute("src") && img.dataset.src) { /* новая или отменённая */
-        img.fetchPriority = "high";
-        img.src = img.dataset.src;
+    const dist = distanceToViewport(img.getBoundingClientRect());
+    if (dist <= NEAR) {
+      nearBusy = true;
+      if (!img.getAttribute("src") && img.dataset.src) {
+        start(img, "high");
+      } else if (!img.dataset.resynced && loading.length >= SOCKET_BUDGET) {
+        /* ДОГНАЛИ качающуюся low И сокеты кончились: идущему запросу приоритет
+           не поднять, юзер смотрит на пустую клетку. Перезапуск с high теряет
+           часть тела, но ставит запрос в голову очереди. Только по дефициту
+           сокетов — иначе перезапуск лишь сбрасывает честный прогресс */
+        img.dataset.resynced = "1";
+        img.removeAttribute("src");
+        start(img, "high");
       }
       continue;
     }
-    /* rest: качается? гистерезис с порогами отмены, стартует — в очередь */
     if (img.getAttribute("src")) {
-      if (dist > HARD_CANCEL || (dist > CANCEL_DIST && nearPending)) {
-        img.removeAttribute("src"); /* юзер ушёл далеко — хвост больше не нужен */
-      } else {
-        restLoading++; /* поддерживаем уровень очереди, а не лавину от каждого load */
-      }
+      /* ГИСТЕРЕЗИС: качается — пусть доезжает. Отмены — только за CANCEL_DIST
+         (безусловно) и по бюджету сокетов (ниже, самые дальние) */
+      if (dist > CANCEL_DIST) { img.removeAttribute("src"); continue; }
+      loading.push({ img, dist });
       continue;
     }
-    rest.push({ img, dist });
+    (dist <= warmDist ? warm : idle).push({ img, dist });
   }
-  if (!nearPending) {
-    /* экран загружен — тянем запас ближайший-вперёд, ДОПОЛНЯЯ очередь до уровня
-       PREFETCH_BATCH: сколько доехало — столько новых стартует. Без уровня каждый
-       load досыпал бы партию, и полоса делилась на десятки ручьёв */
-    const slots = PREFETCH_BATCH - restLoading;
-    if (slots > 0) {
-      rest.sort((a, b) => a.dist - b.dist);
-      for (const { img } of rest.slice(0, slots)) {
-        img.fetchPriority = "low";
-        img.src = img.dataset.src;
-      }
+  /* бюджет сокетов: HTTP/1.1 даёт ~6 соединений — если хвост съел их все,
+     новые near-старты вечно ждут. Жертвуем самыми дальними качающимися */
+  if (loading.length > SOCKET_BUDGET) {
+    loading.sort((a, b) => b.dist - a.dist); /* дальние вперёд */
+    for (const { img } of loading.slice(0, loading.length - SOCKET_BUDGET)) {
+      img.removeAttribute("src");
+      img.dataset.resynced = ""; /* рестарт ей снова разрешён */
     }
+    loading.length = SOCKET_BUDGET;
+  }
+  /* авангард: гарантированные слоты — хвост за спиной не должен съедать их,
+     иначе при быстром листании впереди ничего не стартует */
+  if (warm.length) {
+    warm.sort((a, b) => a.dist - b.dist);
+    for (const { img } of warm.slice(0, WARM_SLOTS)) start(img, "low");
+  }
+  /* idle-догрузка хвоста: только когда видимое обеспечено (юзер стоит) */
+  if (!nearBusy && idle.length && loading.length < TAIL_SLOTS) {
+    idle.sort((a, b) => a.dist - b.dist);
+    const slots = TAIL_SLOTS - loading.length;
+    for (const { img } of idle.slice(0, slots)) start(img, "low");
   }
 }
 
 function scheduleSweep() {
   if (sweepScheduled) return;
   sweepScheduled = true;
-  requestAnimationFrame(() => { sweepScheduled = false; sweep(); });
+  requestAnimationFrame(() => {
+    sweepScheduled = false;
+    /* скорость по факту кадра: сглаженная, гаснет при остановке */
+    const y = scrollY, t = performance.now();
+    if (lastY !== null) {
+      const dt = t - lastT;
+      if (dt > 0 && dt < 500) {
+        const v = Math.abs(y - lastY) / dt * 1000;
+        velocity = velocity * 0.5 + v * 0.5; /* отклик за 2-3 кадра: резкий флинг сразу раскрывает зону */
+      }
+    }
+    lastY = y; lastT = t;
+    sweep();
+  });
 }
 
 function drop(img) {
@@ -204,6 +250,7 @@ export function getLazyIO() {
     lazyIO = new IntersectionObserver(onBatch, { rootMargin: FAR + "px 0px" });
     addEventListener("scroll", scheduleSweep, { passive: true });
     addEventListener("resize", scheduleSweep, { passive: true });
+    console.info("[badge-archive] lazy engine v10 (adaptive warm, socket budget, resync) — если видите эту строку, движок свежий");
   }
   return lazyIO;
 }
