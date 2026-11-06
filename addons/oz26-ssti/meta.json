@@ -2,12 +2,12 @@
   "name": "SSTI",
   "event": "offzone",
   "year": 2026,
-  "manufacturer": "Владислав Корчагин",
+  "manufacturer": "vladko312",
   "category": "community",
   "rarity": "legendary",
   "rarityNote": "Выпущено всего ~10 штук.",
   "obtainedFor": "Помимо доклада, Владислав подготовил CTF-таск, за решение которого первые 10 участников получат уникальный аддон от спикера.",
-  "description": "20 августа в 12:00 на Main track с докладом «Нелогические предположения: ищем RCE в безопасных шаблонизаторах» (https://offzone.moscow/program/logic-less-assumptions-looking-for-rce-in-safe-template-engines/) выступит Владислав Корчагин.",
+  "description": "20 августа в 12:00 на Main track с докладом [«Нелогические предположения: ищем RCE в безопасных шаблонизаторах»](https://offzone.moscow/program/logic-less-assumptions-looking-for-rce-in-safe-template-engines/) выступит [Владислав Корчагин](http://t.me/vladko312).",
   "source": "https://t.me/offzone_moscow/1540",
   "tags": []
 }
