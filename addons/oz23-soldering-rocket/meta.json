@@ -1,0 +1,11 @@
+{
+  "name": "Ракета",
+  "event": "offzone",
+  "year": 2023,
+  "manufacturer": "Craft.Zone",
+  "category": "soldering",
+  "rarity": "rare",
+  "rarityNote": "Выдавался на зоне пайки в небольшом количестве.",
+  "obtainedFor": "Нет информации",
+  "description": "Выдавался, видимо, несобранным, так как видели только несколько плат без монтажа."
+}
