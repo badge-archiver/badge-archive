@@ -17,6 +17,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [2/2] starting server at http://localhost:4173/ (Ctrl+C — stop)
+echo [2/2] starting server at http://localhost:4173/ (Ctrl+C - Stop)
 start "" http://localhost:4173/
 call node tools\preview.mjs

@@ -83,6 +83,10 @@ await page.locator(".leaf", { hasText: "Бейдж OFFZONE 2018" }).first().clic
 await page.waitForSelector("#f-location");
 ok("форма бейджа (location есть)", (await page.locator("#f-location").count()) === 1);
 ok("у бейджа тоже есть «Исходники проекта»", (await page.locator("#f-schematic").count()) === 1);
+ok("у бейджа есть изготовитель", (await page.locator("#f-manufacturer").count()) === 1);
+ok("изготовитель бейджа прочитан из meta.json", (await page.inputValue("#f-manufacturer")) === "BI.ZONE Hardware Lab");
+ok("даталист знает производителей бейджей", (await page.locator("#mfr-list option").count()) >= 10);
+ok("у бейджа нет поля тегов (валидатор их не знает)", (await page.locator("#f-tags").count()) === 0);
 
 /* проверка сборкой из UI */
 await page.click("#btn-validate");

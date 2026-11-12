@@ -13,6 +13,7 @@ import { existsSync } from "node:fs";
 import { join, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import { FIELDS, KIND_FIELDS } from "../schema.mjs";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const PORT = Number(process.argv[2] ?? 4174);
@@ -51,7 +52,8 @@ async function readItems(kind) {
     try {
       meta = JSON.parse(await readFile(join(dir, "meta.json"), "utf8"));
     } catch {
-      meta = { name: "!! сломан meta.json", event: "", year: 0 }; // всё равно покажем в дереве
+      /* _broken: дерево покажет в отдельной ветке, редактор не даст открыть и затереть */
+      meta = { name: "!! сломан meta.json", event: "", year: 0, _broken: true };
     }
     const files = await readdir(dir);
     out.push({
@@ -69,7 +71,8 @@ async function readData() {
     readItems("badges"),
     readItems("addons"),
   ]);
-  return { config, badges, addons };
+  /* схема полей — тот же контракт, что валидирует build; форма строится по ней */
+  return { config, badges, addons, schema: { fields: FIELDS, kinds: KIND_FIELDS } };
 }
 
 /* ---------- API ---------- */
@@ -102,6 +105,14 @@ const server = createServer(async (req, res) => {
       const meta = await json(req);
       delete meta.slug;
       delete meta.photos; // служебные поля не пишем
+      delete meta._broken;
+      /* контракт один на всех (tools/schema.mjs): неизвестное поле — ошибка,
+         а не молчаливая запись, которую build потом найдёт warning'ом */
+      const allowed = KIND_FIELDS[itemMatch[1].replace(/s$/, "")];
+      const unknown = Object.keys(meta).filter((k) => !allowed.includes(k));
+      if (unknown.length) {
+        return send(res, 400, { error: `неизвестные поля: ${unknown.join(", ")} — добавь в tools/schema.mjs или убери из meta.json` });
+      }
       await writeFile(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + "\n");
       return send(res, 200, { ok: true });
     }
@@ -146,6 +157,16 @@ const server = createServer(async (req, res) => {
       if (!full.startsWith(join(ROOT, kind))) return send(res, 403, { error: "плохой путь" });
       const body = await readFile(full);
       res.writeHead(200, { "content-type": MIME[extname(file).toLowerCase()] ?? "application/octet-stream" });
+      return res.end(body);
+    }
+
+    /* статика сайта (/src/…) — ради favicon из корня репо, редактор сам сидит глубже */
+    const srcMatch = path.match(/^\/src\/([A-Za-z0-9._/-]+)$/);
+    if (srcMatch && req.method === "GET") {
+      const full = normalize(join(ROOT, "src", srcMatch[1]));
+      if (!full.startsWith(join(ROOT, "src"))) return send(res, 403, { error: "плохой путь" });
+      const body = await readFile(full);
+      res.writeHead(200, { "content-type": MIME[extname(full).toLowerCase()] ?? "application/octet-stream" });
       return res.end(body);
     }
 

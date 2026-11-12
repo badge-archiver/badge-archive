@@ -22,10 +22,16 @@ function toast(text, isErr = false) {
   setTimeout(() => (el.className = "toast"), 2600);
 }
 
-const NUM_FIELDS = new Set(["year", "order"]);
+/* ---------- схема полей ---------- */
+
+/* схема приезжает с сервера из tools/schema.mjs — та же, по которой валидирует
+   build: форма физически не может показать то, что валидатор не примет */
+const kindKey = () => (state.kind === "badges" ? "badge" : "addon");
+const schemaKeys = () => state.data.schema.kinds[kindKey()];
+const def = (key) => state.data.schema.fields[key];
 
 function fieldFromInput(key, raw) {
-  if (NUM_FIELDS.has(key)) return raw === "" ? undefined : Number(raw);
+  if (def(key)?.control === "number") return raw === "" ? undefined : Number(raw);
   if (key === "tags") return raw.split(",").map((t) => t.trim()).filter(Boolean);
   return raw === "" ? undefined : raw;
 }
@@ -61,17 +67,34 @@ function renderTree() {
     if (q && !String(item.name ?? "").toLowerCase().includes(q) && !item.slug.includes(q)) return null;
     const b = document.createElement("button");
     b.className = "leaf" + (state.slug === item.slug && state.kind === kind ? " active" : "");
-    b.textContent = item.name ?? item.slug;
+    b.textContent = item._broken ? `${item.slug} — meta.json не парсится` : (item.name ?? item.slug);
     b.addEventListener("click", () => selectItem(kind, item.slug));
     return b;
+  };
+
+  /* сломанные meta.json — в отдельную ветку: не прячутся в чужих группах и не теряются */
+  const brokenDetails = (items, kind) => {
+    const broken = items.filter((i) => i._broken);
+    if (!broken.length) return null;
+    const details = document.createElement("details");
+    details.open = forceOpen;
+    const summary = document.createElement("summary");
+    summary.textContent = `!! сломан meta.json · ${broken.length}`;
+    details.append(summary);
+    for (const item of broken) {
+      const l = leaf(item, kind);
+      if (l) details.append(l);
+    }
+    return details;
   };
 
   /* БЕЙДЖИ: конференция → год */
   const badgesBranch = document.createElement("div");
   badgesBranch.className = "branch";
   badgesBranch.append(Object.assign(document.createElement("div"), { className: "group-label", textContent: "БЕЙДЖИ" }));
+  const badgesOk = badges.filter((b) => !b._broken);
   for (const [key, def] of eventOrder(config)) {
-    const items = badges.filter((b) => b.event === key).sort((a, b) => b.year - a.year);
+    const items = badgesOk.filter((b) => b.event === key).sort((a, b) => b.year - a.year);
     if (!items.length) continue;
     const details = document.createElement("details");
     const branchKey = "badge:" + key;
@@ -86,15 +109,17 @@ function renderTree() {
     }
     badgesBranch.append(details);
   }
+  badgesBranch.append(brokenDetails(badges, "badges"));
   tree.append(badgesBranch);
 
   /* АДДОНЫ: год → список */
   const addonsBranch = document.createElement("div");
   addonsBranch.className = "branch";
   addonsBranch.append(Object.assign(document.createElement("div"), { className: "group-label", textContent: "АДДОНЫ" }));
-  const years = [...new Set(addons.map((a) => a.year))].sort((a, b) => b - a);
+  const addonsOk = addons.filter((a) => !a._broken);
+  const years = [...new Set(addonsOk.map((a) => a.year))].sort((a, b) => b - a);
   for (const year of years) {
-    const items = addons
+    const items = addonsOk
       .filter((a) => a.year === year)
       .sort((a, b) => String(a.name).localeCompare(String(b.name), "ru"));
     const details = document.createElement("details");
@@ -110,6 +135,7 @@ function renderTree() {
     }
     addonsBranch.append(details);
   }
+  addonsBranch.append(brokenDetails(addons, "addons"));
   tree.append(addonsBranch);
 }
 
@@ -117,14 +143,11 @@ $("#tree-filter").addEventListener("input", renderTree);
 
 /* ---------- панель подсказок: неповторяющиеся фразы поля из всего архива ---------- */
 
-const SUGGEST_FIELDS = new Set(["rarityNote", "obtainedFor", "description"]);
-const SUGGEST_LABELS = {
-  rarityNote: "тираж / пояснение",
-  obtainedFor: "за что выдавали",
-  description: "описание",
-};
 let suggestEl = null;
 let suggestField = null;
+
+/* подписи полей с подсказками — из схемы, чтобы не плодить второй список */
+const suggestLabels = () => schemaKeys().filter((k) => def(k).suggest).map((k) => def(k).label.toLowerCase());
 
 function suggestionsFor(key) {
   const list = state.kind === "badges" ? state.data.badges : state.data.addons;
@@ -148,7 +171,7 @@ function renderSuggestions(key, inputEl) {
 
   const title = document.createElement("p");
   title.className = "suggest-title";
-  title.textContent = `частые формулировки · ${SUGGEST_LABELS[key]}`;
+  title.textContent = `частые формулировки · ${(def(key)?.label ?? key).toLowerCase()}`;
   panel.append(title);
 
   const items = suggestionsFor(key);
@@ -193,12 +216,17 @@ function insertSuggestion(text, inputEl) {
 /* ---------- форма ---------- */
 
 function selectItem(kind, slug) {
-  if (state.dirty && !confirm("Есть несохранённые изменения — потерять их?")) return;
-  state.kind = kind;
-  state.slug = slug;
   const list = kind === "badges" ? state.data.badges : state.data.addons;
   const item = list.find((i) => i.slug === slug);
   if (!item) return;
+  /* оригинал не прочитан: форма показала бы заглушку, сохранение стёрло бы файл */
+  if (item._broken) {
+    toast(`meta.json не парсится — почини руками: ${kind}/${slug}/meta.json`, true);
+    return;
+  }
+  if (state.dirty && !confirm("Есть несохранённые изменения — потерять их?")) return;
+  state.kind = kind;
+  state.slug = slug;
   state.draft = { ...item };
   state.dirty = false;
   renderTree();
@@ -206,7 +234,9 @@ function selectItem(kind, slug) {
 }
 
 function manufacturers() {
-  return [...new Set(state.data.addons.map((a) => a.manufacturer).filter(Boolean))]
+  /* и бейджи, и аддоны: BI.ZONE Hardware Lab и Positive Labs — производители бейджей */
+  const all = [...state.data.badges, ...state.data.addons];
+  return [...new Set(all.map((i) => i.manufacturer).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "ru"));
 }
 
@@ -226,7 +256,7 @@ function field(key, label, { type = "text", full = false, list = null, hint = nu
     state.draft[key] = fieldFromInput(key, input.value);
     markDirty();
   });
-  if (SUGGEST_FIELDS.has(key)) {
+  if (def(key)?.suggest) {
     input.addEventListener("focus", () => renderSuggestions(key, input));
   }
   wrap.append(lab, input);
@@ -317,36 +347,24 @@ function renderForm() {
   }
   main.append(photos);
 
-  /* поля */
+  /* поля — по схеме из tools/schema.mjs: тот же список, что валидирует build.
+     Порядок KIND_FIELDS = порядок полей на форме */
   const grid = document.createElement("div");
   grid.className = "grid";
 
-  grid.append(
-    field("name", "Название *", { full: true }),
-    select("event", "Конференция *", config.events),
-    field("year", "Год *", { type: "number" }),
-  );
-  if (isBadge) {
-    grid.append(field("location", "Город"));
-  } else {
+  for (const key of schemaKeys()) {
+    const d = def(key);
     grid.append(
-      field("manufacturer", "Изготовитель", { list: "mfr-list" }),
-      select("category", "Категория", config.categories),
-      select("rarity", "Редкость", config.rarities),
-      field("rarityNote", "Тираж / пояснение", { full: true }),
-      field("obtainedFor", "За что выдавали", { full: true }),
+      d.control === "select"
+        ? select(key, d.label, config[d.dict])
+        : field(key, d.label, {
+            type: d.control,
+            full: d.full,
+            list: d.list ? d.list + "-list" : null,
+            hint: d.hint,
+          }),
     );
   }
-  grid.append(
-    field("description", "Описание (ссылки: голый URL или [подпись](url))", { type: "textarea", full: true }),
-    field("tags", "Теги (через запятую)", { full: true, hint: "новые теги сами появятся в фильтрах сайта" }),
-    field("source", "Источник (URL)"),
-    field("schematic", "Исходники проекта (URL)"),
-    field("model3d", "3D-модель (файл .glb в папке)"),
-    field("cover", "Обложка (имя файла)"),
-    field("order", "Порядок в секции", { type: "number" }),
-    field("todo", "TODO (на сайте не видно)", { full: true }),
-  );
   /* datalist изготовителей */
   const dl = document.createElement("datalist");
   dl.id = "mfr-list";
@@ -360,7 +378,7 @@ function renderForm() {
   /* панель подсказок справа: оживает при фокусе в тираж/за-что/описание */
   suggestEl = document.createElement("aside");
   suggestEl.className = "suggest-panel";
-  suggestEl.append(hint0("подсказки формулировок", "// сфокусируй поле «тираж», «за что выдавали» или «описание»"));
+  suggestEl.append(hint0("подсказки формулировок", "// сфокусируй " + suggestLabels().map((l) => `«${l}»`).join(" или ")));
 
   host.append(main, suggestEl);
   syncActions();
@@ -428,19 +446,26 @@ async function saveItem() {
   const payload = { ...state.draft };
   delete payload.slug;
   delete payload.photos;
+  delete payload._broken;
   for (const key of Object.keys(payload)) {
     const v = payload[key];
     if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) delete payload[key];
   }
-  if (!payload.name || !payload.event || !payload.year) {
-    toast("name / event / year обязательны", true);
+  const missing = schemaKeys().filter((k) => def(k)?.required && !payload[k]);
+  if (missing.length) {
+    toast("обязательны: " + missing.join(", "), true);
     return;
   }
-  const r = await fetch(`/api/item/${state.kind}/${state.slug}`, {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
-  }).then((r) => r.json());
+  let r;
+  try {
+    r = await fetch(`/api/item/${state.kind}/${state.slug}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then((r) => r.json());
+  } catch {
+    return toast("сервер редактора не ответил — meta.json НЕ записан", true);
+  }
 
   if (r.error) return toast(r.error, true);
   state.dirty = false;
@@ -461,15 +486,20 @@ $("#new-cancel").addEventListener("click", () => newDialog.close());
 $("#new-create").addEventListener("click", async () => {
   const kind = $("#new-kind").value;
   const slug = $("#new-slug").value.trim();
-  const r = await fetch("/api/item", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      kind,
-      slug,
-      meta: { name: slug, event: "offzone", year: new Date().getFullYear() },
-    }),
-  }).then((r) => r.json());
+  let r;
+  try {
+    r = await fetch("/api/item", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind,
+        slug,
+        meta: { name: slug, event: "offzone", year: new Date().getFullYear() },
+      }),
+    }).then((r) => r.json());
+  } catch {
+    return toast("сервер редактора не ответил — айтем НЕ создан", true);
+  }
   if (r.error) return toast(r.error, true);
   newDialog.close();
   toast("создан: " + slug);

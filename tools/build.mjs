@@ -12,6 +12,7 @@ import {
 } from "node:fs";
 import { join, extname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { KIND_FIELDS } from "./schema.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIST = join(ROOT, "dist");
@@ -171,11 +172,9 @@ function readItem(kind, slug) {
 
 /* ---------------- валидация ---------------- */
 
-const ALLOWED = {
-  badge: ["name", "event", "year", "location", "description", "source", "schematic", "model3d", "cover", "order", "todo"],
-  addon: ["name", "event", "year", "manufacturer", "category", "rarity", "rarityNote",
-    "obtainedFor", "description", "source", "schematic", "tags", "model3d", "cover", "order", "todo"],
-};
+/* источник правды — tools/schema.mjs: форма редактора строится по нему же,
+   «форма пишет то, что валидатор не ест» теперь невозможно архитектурно */
+const ALLOWED = KIND_FIELDS;
 
 function validate(item, kind) {
   const id = `${kind}/${item.slug}`;
