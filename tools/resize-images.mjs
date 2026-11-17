@@ -3,7 +3,7 @@
  * Даунскейл/пережатие картинок для веба, in-place
  * ------------------------------------------------
  * 1. Рекурсивно бежим по каталогам (node_modules/.git/dist — мимо, там мусор)
- * 2. Кандидат на обработку: ширина > max-width (дефолт 2500) ИЛИ вес > max-kb (дефолт 800 КБ)
+ * 2. Кандидат на обработку: ширина > max-width (дефолт 1500) ИЛИ вес > max-kb (дефолт 400 КБ)
  *    - широкий  → ресайз по ширине, пропорции сохранены (Lanczos3) + пережатие
  *    - тяжёлый  → только пережатие, разрешение НЕ трогаем
  *    + --keep-size: пережать вообще всё, без условий и без ресайза
@@ -11,7 +11,7 @@
  * 4. Страховки: EXIF-поворот печём в пиксели, анимацию не трогаем,
  *    файл НЕ перезаписывается, если новый вариант тяжелее старого.
  *
- * Запуск:  node tools/resize-images.mjs [каталог] [--max-width=2500] [--max-kb=800] [--jpeg-quality=N] [--keep-size] [--dry-run] [--skip=a,b]
+ * Запуск:  node tools/resize-images.mjs [каталог] [--max-width=1500] [--max-kb=400] [--jpeg-quality=N] [--keep-size] [--dry-run] [--skip=a,b]
  * Пример:  npm run resize-images -- --dry-run
  *          tools\resize-images.cmd --dry-run
  *
@@ -37,8 +37,8 @@ const DRY_RUN = args.includes("--dry-run");
 const KEEP_SIZE = args.includes("--keep-size"); // не трогаем разрешение, только пережимаем
 
 const targetDir = args.find((a) => !a.startsWith("--")) || ROOT;
-const MAX_WIDTH = Number(flag("max-width", 2500)) | 0;
-const MAX_KB = Math.max(1, Number(flag("max-kb", 800)) | 0); // тяжелее — кандидат на пережатие
+const MAX_WIDTH = Number(flag("max-width", 1500)) | 0;
+const MAX_KB = Math.max(1, Number(flag("max-kb", 400)) | 0); // тяжелее — кандидат на пережатие
 const MAX_BYTES = MAX_KB * 1024;
 
 /* Качество JPEG — per-file, зависит от того, что с файлом делают:
